@@ -149,6 +149,7 @@
           <th>Métier</th>
           <th>Ville</th>
           <th>Contact</th>
+          <th>Transaction PayPal</th>
           <th>Statut</th>
           <th>Inscription</th>
           <th>Actions</th>
@@ -215,17 +216,25 @@ function afficherStats() {
 function renderTable(data) {
   const tbody = document.getElementById('adminTbody');
   if(!data.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--gray-mid)">Aucun résultat</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--gray-mid)">Aucun résultat</td></tr>';
     return;
   }
   tbody.innerHTML = data.map(a => {
     const dateStr = a.createdAt?.toDate ? a.createdAt.toDate().toLocaleDateString('fr-FR') : '—';
     const actif = a.actif !== false;
+    const txId = a.paypalTransactionId || '—';
+    const vérifié = a.paypalVerifié === true;
+    const txBadge = txId === '—' || txId === 'non renseigné'
+      ? `<span style="color:#DC2626;font-size:0.75rem;font-weight:700;">⚠️ Absent</span>`
+      : vérifié
+        ? `<span style="color:#15803D;font-size:0.75rem;font-weight:700;">✅ Vérifié</span><br><span style="font-size:0.72rem;color:#555;font-family:monospace">${txId}</span>`
+        : `<span style="color:#D97706;font-size:0.75rem;font-weight:700;">🟡 À vérifier</span><br><span style="font-size:0.72rem;color:#555;font-family:monospace">${txId}</span>`;
     return `<tr>
       <td><div class="td-name">${a.emoji||'🔨'} ${a.name}</div><div style="font-size:0.75rem;color:var(--gray-mid)">${a.entreprise||''}</div></td>
       <td><span class="td-metier">${a.metier}</span></td>
       <td>${a.ville}</td>
       <td><div style="font-size:0.8rem">${a.tel||'—'}</div><div style="font-size:0.75rem;color:var(--gray-mid)">${a.email||''}</div></td>
+      <td style="min-width:140px">${txBadge}${!vérifié && txId !== '—' && txId !== 'non renseigné' ? `<br><button class="action-btn" style="background:#EFF6FF;color:#1D4ED8;margin-top:4px" onclick="marquerVérifié('${a.id}')">✔ Marquer vérifié</button>` : ''}</td>
       <td><span class="${actif?'badge-actif':'badge-inactif'}">${actif?'Actif':'Inactif'}</span></td>
       <td class="td-date">${dateStr}</td>
       <td>
@@ -246,6 +255,15 @@ function filtrerTable() {
     (a.entreprise||'').toLowerCase().includes(q)
   );
   renderTable(filtres);
+}
+
+async function marquerVérifié(id) {
+  try {
+    await window._updateDoc(window._doc(window._db, 'artisans', id), { paypalVerifié: true });
+    const a = artisans.find(x => x.id===id);
+    if(a) a.paypalVerifié = true;
+    filtrerTable();
+  } catch(e) { alert('Erreur Firebase'); }
 }
 
 async function toggleActif(id, actuel) {
