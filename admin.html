@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ArtisanPro — Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -24,7 +26,6 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
-
   window._db = db;
   window._col = collection;
   window._getDocs = getDocs;
@@ -34,14 +35,23 @@
   window._updateDoc = updateDoc;
   window._deleteDoc = deleteDoc;
 
-  window.addEventListener('load', charger);
+  window.addEventListener('load', () => {
+    // Init EmailJS
+    emailjs.init({ publicKey: "VOTRE_EMAILJS_PUBLIC_KEY" }); // 🔧 À remplacer
+  });
 </script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root { --navy:#1E3A5F; --brick:#E85D26; --brick-dark:#C44D1A; --cream:#F7F4EF; --gray:#E8E4DE; --gray-mid:#9B9790; --text:#1A1A1A; --white:#fff; --green:#15803D; --green-bg:#ECFDF3; --red:#DC2626; --red-bg:#FEF2F2; }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  :root {
+    --navy:#1E3A5F; --brick:#E85D26; --brick-dark:#C44D1A;
+    --cream:#F7F4EF; --gray:#E8E4DE; --gray-mid:#9B9790;
+    --text:#1A1A1A; --white:#fff;
+    --green:#15803D; --green-bg:#ECFDF3;
+    --red:#DC2626; --red-bg:#FEF2F2;
+    --orange:#D97706; --orange-bg:#FFFBEB;
+  }
   body { font-family:'Inter',sans-serif; background:var(--cream); color:var(--text); min-height:100vh; }
 
-  /* HEADER */
   .admin-header { background:var(--navy); padding:0 2rem; height:60px; display:flex; align-items:center; justify-content:space-between; }
   .admin-logo { font-family:'Playfair Display',serif; color:var(--white); font-size:1.3rem; }
   .admin-logo span { color:var(--brick); }
@@ -49,7 +59,6 @@
   .back-link { color:rgba(255,255,255,0.6); text-decoration:none; font-size:0.85rem; }
   .back-link:hover { color:var(--white); }
 
-  /* LOGIN */
   .login-screen { max-width:380px; margin:5rem auto; background:var(--white); border-radius:16px; padding:2.5rem; box-shadow:0 12px 40px rgba(0,0,0,0.1); text-align:center; }
   .login-screen h2 { font-family:'Playfair Display',serif; color:var(--navy); font-size:1.5rem; margin-bottom:0.5rem; }
   .login-screen p { color:var(--gray-mid); font-size:0.875rem; margin-bottom:1.5rem; }
@@ -59,46 +68,95 @@
   .login-btn:hover { background:var(--brick-dark); }
   .login-error { color:var(--red); font-size:0.8rem; margin-top:0.5rem; display:none; }
 
-  /* DASHBOARD */
-  .dashboard { display:none; max-width:1100px; margin:0 auto; padding:2rem; }
-  .dash-stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:1rem; margin-bottom:2rem; }
+  .dashboard { display:none; max-width:1200px; margin:0 auto; padding:2rem; }
+
+  /* STATS */
+  .dash-stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem; }
   .dash-card { background:var(--white); border:1.5px solid var(--gray); border-radius:12px; padding:1.25rem 1.5rem; }
   .dash-card-num { font-family:'Playfair Display',serif; font-size:2rem; font-weight:900; color:var(--brick); }
-  .dash-card-label { font-size:0.8rem; color:var(--gray-mid); margin-top:0.2rem; text-transform:uppercase; letter-spacing:0.5px; }
+  .dash-card-label { font-size:0.75rem; color:var(--gray-mid); margin-top:0.2rem; text-transform:uppercase; letter-spacing:0.5px; }
+  .dash-card.urgent { border-color:var(--red); }
+  .dash-card.urgent .dash-card-num { color:var(--red); }
+  .dash-card.warning { border-color:var(--orange); }
+  .dash-card.warning .dash-card-num { color:var(--orange); }
+
+  /* ALERTE EXPIRATION */
+  .expiration-banner { display:none; background:var(--red-bg); border:2px solid #FECACA; border-radius:12px; padding:1rem 1.5rem; margin-bottom:1.5rem; }
+  .expiration-banner.warning { background:var(--orange-bg); border-color:#FDE68A; }
+  .expiration-banner h3 { font-size:0.9rem; font-weight:700; color:var(--red); margin-bottom:0.25rem; }
+  .expiration-banner.warning h3 { color:var(--orange); }
+  .expiration-banner p { font-size:0.8rem; color:#555; }
+
+  /* BARRE ACTIONS */
+  .actions-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem; }
+  .table-title { font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--navy); }
+  .actions-right { display:flex; gap:0.5rem; flex-wrap:wrap; }
+  .table-search { border:1.5px solid var(--gray); border-radius:8px; padding:0.5rem 0.9rem; font-family:'Inter',sans-serif; font-size:0.875rem; outline:none; background:var(--white); min-width:200px; }
+  .table-search:focus { border-color:var(--brick); }
+
+  .btn { border:none; border-radius:8px; padding:0.5rem 1rem; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+  .btn-navy { background:var(--navy); color:var(--white); }
+  .btn-navy:hover { background:#162d4a; }
+  .btn-brick { background:var(--brick); color:var(--white); }
+  .btn-brick:hover { background:var(--brick-dark); }
+  .btn-green { background:var(--green); color:var(--white); }
+  .btn-green:hover { background:#166534; }
+  .btn-orange { background:var(--orange); color:var(--white); }
+  .btn-spin { position:relative; }
+  .btn-spin.loading { opacity:0.7; pointer-events:none; }
 
   /* TABLE */
-  .table-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem; }
-  .table-title { font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--navy); }
-  .table-search { border:1.5px solid var(--gray); border-radius:8px; padding:0.5rem 0.9rem; font-family:'Inter',sans-serif; font-size:0.875rem; outline:none; background:var(--white); min-width:220px; }
-  .table-search:focus { border-color:var(--brick); }
-  .export-btn { background:var(--navy); color:var(--white); border:none; border-radius:8px; padding:0.5rem 1rem; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; cursor:pointer; }
-  .export-btn:hover { background:#162d4a; }
-
   .table-wrap { background:var(--white); border-radius:14px; border:1.5px solid var(--gray); overflow:hidden; overflow-x:auto; }
-  table { width:100%; border-collapse:collapse; min-width:700px; }
+  table { width:100%; border-collapse:collapse; min-width:900px; }
   thead { background:var(--navy); }
-  thead th { color:rgba(255,255,255,0.85); font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; padding:0.9rem 1rem; text-align:left; }
+  thead th { color:rgba(255,255,255,0.85); font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; padding:0.9rem 0.75rem; text-align:left; white-space:nowrap; }
   tbody tr { border-bottom:1px solid var(--gray); transition:background 0.15s; }
   tbody tr:last-child { border-bottom:none; }
   tbody tr:hover { background:#FFF8F5; }
-  tbody td { padding:0.85rem 1rem; font-size:0.875rem; color:var(--text); vertical-align:middle; }
+  tbody tr.row-expired { background:#FEF2F2 !important; }
+  tbody tr.row-expiring { background:#FFFBEB !important; }
+  tbody td { padding:0.75rem; font-size:0.85rem; color:var(--text); vertical-align:middle; }
   .td-name { font-weight:600; color:var(--navy); }
-  .td-metier { color:var(--brick); font-weight:600; font-size:0.8rem; }
-  .td-date { color:var(--gray-mid); font-size:0.8rem; }
-  .badge-actif { background:var(--green-bg); color:var(--green); font-size:0.7rem; font-weight:700; padding:0.2rem 0.6rem; border-radius:20px; }
-  .badge-inactif { background:var(--red-bg); color:var(--red); font-size:0.7rem; font-weight:700; padding:0.2rem 0.6rem; border-radius:20px; }
-  .action-btn { border:none; border-radius:6px; padding:0.3rem 0.7rem; font-family:'Inter',sans-serif; font-size:0.75rem; font-weight:600; cursor:pointer; margin-right:0.3rem; }
+  .td-metier { color:var(--brick); font-weight:600; font-size:0.78rem; }
+  .td-date { color:var(--gray-mid); font-size:0.78rem; }
+
+  .badge { font-size:0.68rem; font-weight:700; padding:0.2rem 0.55rem; border-radius:20px; white-space:nowrap; display:inline-block; }
+  .badge-actif { background:var(--green-bg); color:var(--green); }
+  .badge-inactif { background:var(--red-bg); color:var(--red); }
+  .badge-expiring { background:var(--orange-bg); color:var(--orange); }
+  .badge-expired { background:var(--red-bg); color:var(--red); }
+  .badge-ok { background:var(--green-bg); color:var(--green); }
+
+  .action-btn { border:none; border-radius:6px; padding:0.28rem 0.6rem; font-family:'Inter',sans-serif; font-size:0.72rem; font-weight:600; cursor:pointer; margin:2px; white-space:nowrap; }
   .btn-toggle { background:#EFF6FF; color:#1D4ED8; }
   .btn-toggle:hover { background:#DBEAFE; }
   .btn-delete { background:var(--red-bg); color:var(--red); }
   .btn-delete:hover { background:#FEE2E2; }
+  .btn-verify { background:#EFF6FF; color:#1D4ED8; }
+  .btn-renew { background:var(--orange-bg); color:var(--orange); border:1px solid #FDE68A; }
+  .btn-renew:hover { background:#FEF3C7; }
 
   .loading { text-align:center; padding:3rem; color:var(--gray-mid); }
   .spinner { width:32px; height:32px; border:3px solid var(--gray); border-top-color:var(--brick); border-radius:50%; animation:spin 0.7s linear infinite; margin:0 auto 1rem; }
   @keyframes spin { to { transform:rotate(360deg); } }
   .empty { text-align:center; padding:3rem; color:var(--gray-mid); }
 
-  @media(max-width:600px) { .dashboard { padding:1rem; } }
+  /* TOAST */
+  .toast { position:fixed; bottom:1.5rem; right:1.5rem; background:var(--navy); color:var(--white); padding:0.75rem 1.25rem; border-radius:10px; font-size:0.875rem; font-weight:600; z-index:9999; transform:translateY(100px); opacity:0; transition:all 0.3s; box-shadow:0 8px 24px rgba(0,0,0,0.2); }
+  .toast.show { transform:translateY(0); opacity:1; }
+  .toast.success { background:var(--green); }
+  .toast.error { background:var(--red); }
+  .toast.warning { background:var(--orange); }
+
+  /* CONFIG EMAILJS */
+  .config-panel { background:var(--white); border:2px dashed var(--gray); border-radius:12px; padding:1.25rem; margin-bottom:1.5rem; }
+  .config-panel h3 { font-size:0.85rem; font-weight:700; color:var(--navy); margin-bottom:0.75rem; }
+  .config-row { display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-bottom:0.5rem; }
+  .config-input { flex:1; min-width:180px; border:1.5px solid var(--gray); border-radius:8px; padding:0.5rem 0.75rem; font-family:'Inter',sans-serif; font-size:0.8rem; outline:none; }
+  .config-input:focus { border-color:var(--brick); }
+  .config-label { font-size:0.75rem; font-weight:600; color:var(--gray-mid); min-width:120px; }
+
+  @media(max-width:600px) { .dashboard { padding:1rem; } .actions-right { width:100%; } }
 </style>
 </head>
 <body>
@@ -122,18 +180,56 @@
 
 <!-- DASHBOARD -->
 <div class="dashboard" id="dashboard">
+
+  <!-- STATS -->
   <div class="dash-stats">
     <div class="dash-card"><div class="dash-card-num" id="statTotal">—</div><div class="dash-card-label">Artisans inscrits</div></div>
     <div class="dash-card"><div class="dash-card-num" id="statActifs">—</div><div class="dash-card-label">Profils actifs</div></div>
-    <div class="dash-card"><div class="dash-card-num" id="statRevenu">—</div><div class="dash-card-label">Revenus PayPal (€)</div></div>
+    <div class="dash-card warning"><div class="dash-card-num" id="statExpiring">—</div><div class="dash-card-label">Expirent dans 7j</div></div>
+    <div class="dash-card urgent"><div class="dash-card-num" id="statExpired">—</div><div class="dash-card-label">Expirés (désactivés)</div></div>
+    <div class="dash-card"><div class="dash-card-num" id="statRevenu">—</div><div class="dash-card-label">Revenus (€)</div></div>
     <div class="dash-card"><div class="dash-card-num" id="statMois">—</div><div class="dash-card-label">Inscrits ce mois</div></div>
   </div>
 
-  <div class="table-header">
+  <!-- ALERTES EXPIRATION -->
+  <div class="expiration-banner" id="bannerExpired">
+    <h3>🔴 Profils expirés désactivés automatiquement</h3>
+    <p id="bannerExpiredTxt"></p>
+  </div>
+  <div class="expiration-banner warning" id="bannerExpiring">
+    <h3>🟡 Profils qui expirent dans moins de 7 jours</h3>
+    <p id="bannerExpiringTxt"></p>
+  </div>
+
+  <!-- CONFIG EMAILJS -->
+  <div class="config-panel" id="configPanel">
+    <h3>⚙️ Configuration EmailJS <span style="font-weight:400;color:var(--gray-mid);font-size:0.75rem">(à remplir une seule fois)</span></h3>
+    <div class="config-row">
+      <span class="config-label">Service ID</span>
+      <input class="config-input" id="ejsService" placeholder="service_xxxxxxx">
+    </div>
+    <div class="config-row">
+      <span class="config-label">Template ID</span>
+      <input class="config-input" id="ejsTemplate" placeholder="template_xxxxxxx">
+    </div>
+    <div class="config-row">
+      <span class="config-label">Public Key</span>
+      <input class="config-input" id="ejsKey" placeholder="xxxxxxxxxxxxxxxxxxxxxx">
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+      <button class="btn btn-navy" onclick="sauvegarderConfig()">💾 Sauvegarder</button>
+      <button class="btn btn-green" onclick="testerEmail()">📧 Tester l'email</button>
+      <span style="font-size:0.75rem;color:var(--gray-mid);align-self:center">→ emailjs.com pour créer votre compte gratuit</span>
+    </div>
+  </div>
+
+  <!-- ACTIONS TABLE -->
+  <div class="actions-bar">
     <h2 class="table-title">Liste des artisans</h2>
-    <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    <div class="actions-right">
       <input type="text" class="table-search" id="tableSearch" placeholder="Rechercher…" oninput="filtrerTable()">
-      <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="btn btn-orange btn-spin" id="btnVerifExp" onclick="verifierExpirations()">🔄 Vérifier expirations</button>
+      <button class="btn btn-navy" onclick="exportCSV()">⬇ Export CSV</button>
     </div>
   </div>
 
@@ -146,12 +242,11 @@
       <thead>
         <tr>
           <th>Artisan</th>
-          <th>Métier</th>
-          <th>Ville</th>
+          <th>Métier · Ville</th>
           <th>Contact</th>
-          <th>Transaction PayPal</th>
+          <th>Transaction</th>
+          <th>Expiration</th>
           <th>Statut</th>
-          <th>Inscription</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -160,6 +255,9 @@
     <div class="empty" id="emptyMsg" style="display:none">Aucun artisan inscrit pour l'instant.</div>
   </div>
 </div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
 
 <script>
 // ======================================================
@@ -170,17 +268,72 @@ const ADMIN_PASSWORD = 'artisanpro2026';
 let artisans = [];
 let filtres = [];
 
+// ───────────────────────────────────────────────
+// LOGIN
+// ───────────────────────────────────────────────
 function login() {
   const pwd = document.getElementById('adminPwd').value;
-  if(pwd === ADMIN_PASSWORD) {
+  if (pwd === ADMIN_PASSWORD) {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
+    chargerConfig();
     charger();
   } else {
     document.getElementById('loginError').style.display = 'block';
   }
 }
 
+// ───────────────────────────────────────────────
+// CONFIG EMAILJS (localStorage)
+// ───────────────────────────────────────────────
+function chargerConfig() {
+  const cfg = JSON.parse(localStorage.getItem('artisanpro_emailjs') || '{}');
+  if (cfg.service) document.getElementById('ejsService').value = cfg.service;
+  if (cfg.template) document.getElementById('ejsTemplate').value = cfg.template;
+  if (cfg.key) document.getElementById('ejsKey').value = cfg.key;
+}
+
+function sauvegarderConfig() {
+  const cfg = {
+    service: document.getElementById('ejsService').value.trim(),
+    template: document.getElementById('ejsTemplate').value.trim(),
+    key: document.getElementById('ejsKey').value.trim()
+  };
+  localStorage.setItem('artisanpro_emailjs', JSON.stringify(cfg));
+  if (cfg.key) emailjs.init({ publicKey: cfg.key });
+  toast('✅ Configuration EmailJS sauvegardée', 'success');
+}
+
+function getEmailJSConfig() {
+  return JSON.parse(localStorage.getItem('artisanpro_emailjs') || '{}');
+}
+
+async function testerEmail() {
+  const cfg = getEmailJSConfig();
+  if (!cfg.service || !cfg.template || !cfg.key) {
+    toast('⚠️ Remplis d\'abord la config EmailJS', 'warning'); return;
+  }
+  emailjs.init({ publicKey: cfg.key });
+  try {
+    await emailjs.send(cfg.service, cfg.template, {
+      to_email: 'jeromebillot1978@gmail.com',
+      to_name: 'Admin Test',
+      artisan_metier: 'Plombier',
+      artisan_ville: 'Paris',
+      date_expiration: new Date().toLocaleDateString('fr-FR'),
+      jours_restants: '7',
+      lien_renouvellement: 'https://paypal.me/jercatbilman/15EUR',
+      lien_site: 'https://artisan-pro-nine.vercel.app'
+    });
+    toast('📧 Email de test envoyé à jeromebillot1978@gmail.com', 'success');
+  } catch(e) {
+    toast('❌ Erreur EmailJS : ' + e.text, 'error');
+  }
+}
+
+// ───────────────────────────────────────────────
+// CHARGEMENT FIREBASE
+// ───────────────────────────────────────────────
 async function charger() {
   try {
     const db = window._db;
@@ -193,58 +346,226 @@ async function charger() {
     document.getElementById('loadingIndicator').style.display = 'none';
     document.getElementById('adminTable').style.display = artisans.length ? 'table' : 'none';
     document.getElementById('emptyMsg').style.display = artisans.length ? 'none' : 'block';
+    verifierExpirations(true); // vérif silencieuse au chargement
   } catch(e) {
-    document.getElementById('loadingIndicator').innerHTML = '<p style="color:#DC2626">⚠️ Firebase non configuré. Remplacez la config Firebase.</p>';
+    document.getElementById('loadingIndicator').innerHTML = '<p style="color:#DC2626">⚠️ Firebase non configuré.</p>';
     console.error(e);
   }
 }
 
+// ───────────────────────────────────────────────
+// STATS
+// ───────────────────────────────────────────────
 function afficherStats() {
-  const actifs = artisans.filter(a => a.actif !== false).length;
   const now = new Date();
-  const moisActuel = artisans.filter(a => {
-    if(!a.createdAt?.toDate) return false;
-    const d = a.createdAt.toDate();
-    return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+  const dans7j = new Date(); dans7j.setDate(dans7j.getDate() + 7);
+
+  const actifs = artisans.filter(a => a.actif !== false).length;
+  const expiring = artisans.filter(a => {
+    if (!a.dateExpiration || a.actif === false) return false;
+    const exp = new Date(a.dateExpiration);
+    return exp > now && exp <= dans7j;
   }).length;
+  const expired = artisans.filter(a => {
+    if (!a.dateExpiration) return false;
+    return new Date(a.dateExpiration) < now && a.actif === false;
+  }).length;
+  const moisActuel = artisans.filter(a => {
+    if (!a.createdAt?.toDate) return false;
+    const d = a.createdAt.toDate();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+
   document.getElementById('statTotal').textContent = artisans.length;
   document.getElementById('statActifs').textContent = actifs;
+  document.getElementById('statExpiring').textContent = expiring;
+  document.getElementById('statExpired').textContent = expired;
   document.getElementById('statRevenu').textContent = (artisans.length * 15).toLocaleString('fr-FR') + ' €';
   document.getElementById('statMois').textContent = moisActuel;
 }
 
+// ───────────────────────────────────────────────
+// VÉRIFICATION EXPIRATIONS (cœur du système)
+// ───────────────────────────────────────────────
+async function verifierExpirations(silencieux = false) {
+  const btn = document.getElementById('btnVerifExp');
+  btn.classList.add('loading');
+  btn.textContent = '⏳ Vérification…';
+
+  const now = new Date();
+  const dans7j = new Date(); dans7j.setDate(dans7j.getDate() + 7);
+
+  let expirésDesactivés = [];
+  let rappelsEnvoyes = [];
+  let erreurs = [];
+  const cfg = getEmailJSConfig();
+  if (cfg.key) emailjs.init({ publicKey: cfg.key });
+
+  for (const a of artisans) {
+    if (!a.dateExpiration) continue;
+    const exp = new Date(a.dateExpiration);
+    const joursRestants = Math.ceil((exp - now) / (1000 * 60 * 60 * 24));
+
+    // ── CAS 1 : EXPIRÉ → désactiver automatiquement
+    if (exp < now && a.actif !== false) {
+      try {
+        await window._updateDoc(window._doc(window._db, 'artisans', a.id), {
+          actif: false,
+          desactiveParExpiration: true
+        });
+        a.actif = false;
+        a.desactiveParExpiration = true;
+        expirésDesactivés.push(a.name);
+      } catch(e) { erreurs.push(a.name); }
+    }
+
+    // ── CAS 2 : EXPIRE DANS 7 JOURS → envoyer rappel (une seule fois)
+    if (exp > now && exp <= dans7j && !a.rappelEnvoye && a.email) {
+      if (cfg.service && cfg.template && cfg.key) {
+        try {
+          await emailjs.send(cfg.service, cfg.template, {
+            to_email: a.email,
+            to_name: a.prenom || a.name,
+            artisan_metier: a.metier,
+            artisan_ville: a.ville,
+            date_expiration: exp.toLocaleDateString('fr-FR'),
+            jours_restants: joursRestants.toString(),
+            lien_renouvellement: 'https://paypal.me/jercatbilman/15EUR',
+            lien_site: 'https://artisan-pro-nine.vercel.app'
+          });
+          await window._updateDoc(window._doc(window._db, 'artisans', a.id), { rappelEnvoye: true });
+          a.rappelEnvoye = true;
+          rappelsEnvoyes.push(a.name);
+        } catch(e) { erreurs.push('Email ' + a.name); }
+      }
+    }
+  }
+
+  afficherStats();
+  filtres = [...artisans];
+  renderTable(filtres);
+  afficherBannieres();
+
+  btn.classList.remove('loading');
+  btn.textContent = '🔄 Vérifier expirations';
+
+  if (!silencieux) {
+    if (expirésDesactivés.length === 0 && rappelsEnvoyes.length === 0) {
+      toast('✅ Aucune expiration à traiter', 'success');
+    } else {
+      if (expirésDesactivés.length) toast(`🔴 ${expirésDesactivés.length} profil(s) désactivé(s)`, 'error');
+      if (rappelsEnvoyes.length) toast(`📧 ${rappelsEnvoyes.length} rappel(s) envoyé(s)`, 'warning');
+    }
+    if (erreurs.length) toast(`⚠️ Erreurs : ${erreurs.join(', ')}`, 'error');
+  }
+}
+
+function afficherBannieres() {
+  const now = new Date();
+  const dans7j = new Date(); dans7j.setDate(dans7j.getDate() + 7);
+
+  const expirés = artisans.filter(a => a.dateExpiration && new Date(a.dateExpiration) < now && a.actif === false && a.desactiveParExpiration);
+  const expirant = artisans.filter(a => {
+    if (!a.dateExpiration || a.actif === false) return false;
+    const exp = new Date(a.dateExpiration);
+    return exp > now && exp <= dans7j;
+  });
+
+  const be = document.getElementById('bannerExpired');
+  const bw = document.getElementById('bannerExpiring');
+  if (expirés.length) {
+    be.style.display = 'block';
+    document.getElementById('bannerExpiredTxt').textContent = expirés.map(a => `${a.name} (${a.metier}, ${a.ville})`).join(' · ');
+  } else { be.style.display = 'none'; }
+  if (expirant.length) {
+    bw.style.display = 'block';
+    document.getElementById('bannerExpiringTxt').textContent = expirant.map(a => {
+      const j = Math.ceil((new Date(a.dateExpiration) - now) / 86400000);
+      return `${a.name} (${j}j restants)`;
+    }).join(' · ');
+  } else { bw.style.display = 'none'; }
+}
+
+// ───────────────────────────────────────────────
+// RENDU TABLE
+// ───────────────────────────────────────────────
 function renderTable(data) {
   const tbody = document.getElementById('adminTbody');
-  if(!data.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--gray-mid)">Aucun résultat</td></tr>';
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--gray-mid)">Aucun résultat</td></tr>';
     return;
   }
+  const now = new Date();
+  const dans7j = new Date(); dans7j.setDate(dans7j.getDate() + 7);
+
   tbody.innerHTML = data.map(a => {
-    const dateStr = a.createdAt?.toDate ? a.createdAt.toDate().toLocaleDateString('fr-FR') : '—';
     const actif = a.actif !== false;
     const txId = a.paypalTransactionId || '—';
     const vérifié = a.paypalVerifié === true;
+
+    // Expiration
+    let expBadge = '<span style="color:var(--gray-mid);font-size:0.75rem;">—</span>';
+    let rowClass = '';
+    if (a.dateExpiration) {
+      const exp = new Date(a.dateExpiration);
+      const joursRestants = Math.ceil((exp - now) / 86400000);
+      if (exp < now) {
+        expBadge = `<span class="badge badge-expired">❌ Expiré le ${exp.toLocaleDateString('fr-FR')}</span>`;
+        rowClass = 'row-expired';
+      } else if (exp <= dans7j) {
+        expBadge = `<span class="badge badge-expiring">⚠️ J-${joursRestants} (${exp.toLocaleDateString('fr-FR')})</span>`;
+        rowClass = 'row-expiring';
+      } else {
+        expBadge = `<span class="badge badge-ok">✅ ${exp.toLocaleDateString('fr-FR')}</span>`;
+      }
+      if (a.rappelEnvoye) expBadge += `<br><span style="font-size:0.7rem;color:var(--gray-mid)">📧 Rappel envoyé</span>`;
+    }
+
+    // Transaction
     const txBadge = txId === '—' || txId === 'non renseigné'
-      ? `<span style="color:#DC2626;font-size:0.75rem;font-weight:700;">⚠️ Absent</span>`
+      ? `<span style="color:var(--red);font-size:0.72rem;font-weight:700;">⚠️ Absent</span>`
       : vérifié
-        ? `<span style="color:#15803D;font-size:0.75rem;font-weight:700;">✅ Vérifié</span><br><span style="font-size:0.72rem;color:#555;font-family:monospace">${txId}</span>`
-        : `<span style="color:#D97706;font-size:0.75rem;font-weight:700;">🟡 À vérifier</span><br><span style="font-size:0.72rem;color:#555;font-family:monospace">${txId}</span>`;
-    return `<tr>
-      <td><div class="td-name">${a.emoji||'🔨'} ${a.name}</div><div style="font-size:0.75rem;color:var(--gray-mid)">${a.entreprise||''}</div></td>
-      <td><span class="td-metier">${a.metier}</span></td>
-      <td>${a.ville}</td>
-      <td><div style="font-size:0.8rem">${a.tel||'—'}</div><div style="font-size:0.75rem;color:var(--gray-mid)">${a.email||''}</div></td>
-      <td style="min-width:140px">${txBadge}${!vérifié && txId !== '—' && txId !== 'non renseigné' ? `<br><button class="action-btn" style="background:#EFF6FF;color:#1D4ED8;margin-top:4px" onclick="marquerVérifié('${a.id}')">✔ Marquer vérifié</button>` : ''}</td>
-      <td><span class="${actif?'badge-actif':'badge-inactif'}">${actif?'Actif':'Inactif'}</span></td>
-      <td class="td-date">${dateStr}</td>
+        ? `<span style="color:var(--green);font-size:0.72rem;font-weight:700;">✅</span> <span style="font-size:0.7rem;font-family:monospace">${txId.substring(0,12)}…</span>`
+        : `<span style="color:var(--orange);font-size:0.72rem;font-weight:700;">🟡 À vérifier</span><br><span style="font-size:0.7rem;font-family:monospace">${txId.substring(0,12)}…</span>`;
+
+    return `<tr class="${rowClass}">
+      <td>
+        <div class="td-name">${a.emoji||'🔨'} ${a.name}</div>
+        <div style="font-size:0.72rem;color:var(--gray-mid)">${a.entreprise||''}</div>
+      </td>
+      <td>
+        <span class="td-metier">${a.metier}</span>
+        <div style="font-size:0.75rem;color:var(--gray-mid)">${a.ville}</div>
+      </td>
+      <td>
+        <div style="font-size:0.8rem">${a.tel||'—'}</div>
+        <div style="font-size:0.72rem;color:var(--gray-mid)">${a.email||''}</div>
+      </td>
+      <td>
+        ${txBadge}
+        ${!vérifié && txId !== '—' && txId !== 'non renseigné'
+          ? `<br><button class="action-btn btn-verify" onclick="marquerVérifié('${a.id}')">✔ Vérifier</button>`
+          : ''}
+      </td>
+      <td>${expBadge}</td>
+      <td>
+        <span class="badge ${actif?'badge-actif':'badge-inactif'}">${actif?'Actif':'Inactif'}</span>
+        ${a.desactiveParExpiration ? '<br><span style="font-size:0.68rem;color:var(--red)">Auto-désactivé</span>' : ''}
+      </td>
       <td>
         <button class="action-btn btn-toggle" onclick="toggleActif('${a.id}',${actif})">${actif?'Désactiver':'Activer'}</button>
+        ${!actif && a.desactiveParExpiration
+          ? `<button class="action-btn btn-renew" onclick="renouveler('${a.id}')">🔄 Renouveler</button>`
+          : ''}
         <button class="action-btn btn-delete" onclick="supprimerArtisan('${a.id}')">Supprimer</button>
       </td>
     </tr>`;
   }).join('');
 }
 
+// ───────────────────────────────────────────────
+// ACTIONS
+// ───────────────────────────────────────────────
 function filtrerTable() {
   const q = document.getElementById('tableSearch').value.toLowerCase();
   filtres = artisans.filter(a =>
@@ -260,43 +581,81 @@ function filtrerTable() {
 async function marquerVérifié(id) {
   try {
     await window._updateDoc(window._doc(window._db, 'artisans', id), { paypalVerifié: true });
-    const a = artisans.find(x => x.id===id);
-    if(a) a.paypalVerifié = true;
-    filtrerTable();
-  } catch(e) { alert('Erreur Firebase'); }
+    const a = artisans.find(x => x.id===id); if(a) a.paypalVerifié = true;
+    filtrerTable(); toast('✅ Transaction vérifiée', 'success');
+  } catch(e) { toast('❌ Erreur Firebase', 'error'); }
 }
 
 async function toggleActif(id, actuel) {
   try {
-    await window._updateDoc(window._doc(window._db, 'artisans', id), { actif: !actuel });
+    await window._updateDoc(window._doc(window._db, 'artisans', id), { actif: !actuel, desactiveParExpiration: false });
     const a = artisans.find(x => x.id===id);
-    if(a) a.actif = !actuel;
-    afficherStats();
-    filtrerTable();
-  } catch(e) { alert('Erreur Firebase'); }
+    if(a) { a.actif = !actuel; a.desactiveParExpiration = false; }
+    afficherStats(); filtrerTable();
+    toast(actuel ? '🔴 Profil désactivé' : '✅ Profil activé', actuel ? 'error' : 'success');
+  } catch(e) { toast('❌ Erreur Firebase', 'error'); }
+}
+
+async function renouveler(id) {
+  // Renouvelle l'abonnement depuis aujourd'hui + 30 jours
+  const nouvelleDate = new Date();
+  nouvelleDate.setDate(nouvelleDate.getDate() + 30);
+  try {
+    await window._updateDoc(window._doc(window._db, 'artisans', id), {
+      actif: true,
+      dateExpiration: nouvelleDate.toISOString(),
+      rappelEnvoye: false,
+      desactiveParExpiration: false
+    });
+    const a = artisans.find(x => x.id===id);
+    if(a) {
+      a.actif = true;
+      a.dateExpiration = nouvelleDate.toISOString();
+      a.rappelEnvoye = false;
+      a.desactiveParExpiration = false;
+    }
+    afficherStats(); filtrerTable(); afficherBannieres();
+    toast('🔄 Abonnement renouvelé jusqu\'au ' + nouvelleDate.toLocaleDateString('fr-FR'), 'success');
+  } catch(e) { toast('❌ Erreur Firebase', 'error'); }
 }
 
 async function supprimerArtisan(id) {
-  if(!confirm('Supprimer définitivement ce profil ?')) return;
+  if (!confirm('Supprimer définitivement ce profil ?')) return;
   try {
     await window._deleteDoc(window._doc(window._db, 'artisans', id));
     artisans = artisans.filter(a => a.id !== id);
-    afficherStats();
-    filtrerTable();
-  } catch(e) { alert('Erreur Firebase'); }
+    afficherStats(); filtrerTable();
+    toast('🗑️ Profil supprimé', 'warning');
+  } catch(e) { toast('❌ Erreur Firebase', 'error'); }
 }
 
 function exportCSV() {
-  const rows = [['Nom','Entreprise','Métier','Ville','Téléphone','Email','Statut','Date inscription']];
+  const rows = [['Nom','Entreprise','Métier','Ville','Téléphone','Email','Statut','Transaction','Expiration','Rappel envoyé']];
   artisans.forEach(a => {
-    const date = a.createdAt?.toDate ? a.createdAt.toDate().toLocaleDateString('fr-FR') : '';
-    rows.push([a.name, a.entreprise||'', a.metier, a.ville, a.tel||'', a.email||'', a.actif!==false?'Actif':'Inactif', date]);
+    const exp = a.dateExpiration ? new Date(a.dateExpiration).toLocaleDateString('fr-FR') : '';
+    rows.push([
+      a.name, a.entreprise||'', a.metier, a.ville, a.tel||'', a.email||'',
+      a.actif!==false?'Actif':'Inactif',
+      a.paypalTransactionId||'',
+      exp,
+      a.rappelEnvoye?'Oui':'Non'
+    ]);
   });
   const csv = rows.map(r => r.map(v => `"${(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='artisanpro_artisans.csv'; a.click();
+  const el = document.createElement('a'); el.href=url; el.download='artisanpro_artisans.csv'; el.click();
   URL.revokeObjectURL(url);
+}
+
+// ───────────────────────────────────────────────
+// TOAST
+// ───────────────────────────────────────────────
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3500);
 }
 </script>
 </body>
