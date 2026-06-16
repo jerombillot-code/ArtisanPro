@@ -5,7 +5,7 @@ Disallow: /admin.html
 Disallow: /admin
 
 # Sitemap
-Sitemap: https://artisanpro.fr/sitemap.xml
+Sitemap: https://artisan-pro-nine.vercel.app/sitemap.xml
 
 # Crawl-delay (optionnel, bonne pratique)
 Crawl-delay: 1
