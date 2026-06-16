@@ -37,7 +37,7 @@
 
   window.addEventListener('load', () => {
     // Init EmailJS
-    emailjs.init({ publicKey: "VOTRE_EMAILJS_PUBLIC_KEY" }); // 🔧 À remplacer
+    emailjs.init({ publicKey: "nwFhO8ZBsIp574eHv" });
   });
 </script>
 <style>
@@ -288,9 +288,9 @@ function login() {
 // ───────────────────────────────────────────────
 function chargerConfig() {
   const cfg = JSON.parse(localStorage.getItem('artisanpro_emailjs') || '{}');
-  if (cfg.service) document.getElementById('ejsService').value = cfg.service;
-  if (cfg.template) document.getElementById('ejsTemplate').value = cfg.template;
-  if (cfg.key) document.getElementById('ejsKey').value = cfg.key;
+  document.getElementById('ejsService').value = cfg.service || 'service_gcfn7an';
+  document.getElementById('ejsTemplate').value = cfg.template || 'template_kl6n63q';
+  document.getElementById('ejsKey').value = cfg.key || 'nwFhO8ZBsIp574eHv';
 }
 
 function sauvegarderConfig() {
