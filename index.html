@@ -797,9 +797,9 @@ async function sauvegarderArtisan(data) {
     const docRef = await window._addDoc(window._collection(db, 'artisans'), {
       ...data,
       createdAt: window._serverTimestamp(),
-      paiementStatut: 'payé',
+      paiementStatut: 'en attente de vérification',
       paiementMontant: 15,
-      actif: true
+      actif: false
     });
     return docRef.id;
   } catch(e) {
@@ -985,7 +985,8 @@ async function enregistrerApresPaiement() {
     <p>📞 ${tel}</p>
     <p>🧾 Transaction PayPal : <strong>${window._transactionId || '—'}</strong></p>
     <p>📅 Abonnement valide jusqu'au : <strong>${dateExpiration.toLocaleDateString('fr-FR')}</strong></p>
-    <p>✅ Profil en ligne · <strong>15 € réglés</strong>${id ? ' · <span class="firebase-tag">🔥 Firebase</span>' : ''}</p>`;
+    <p>⏳ Profil en cours de vérification · <strong>15 € réglés</strong>${id ? ' · <span class="firebase-tag">🔥 Firebase</span>' : ''}</p>
+    <p style="font-size:0.8rem;color:#555;margin-top:0.25rem;">Votre profil sera visible dans les 24h après vérification de votre paiement.</p>`;
   document.getElementById('success_email').textContent = email;
 }
 
