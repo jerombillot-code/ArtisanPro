@@ -249,8 +249,7 @@
   // Charger les artisans au démarrage
   window.addEventListener('load', () => chargerArtisansFirebase());
 </script>
-<!-- PayPal SDK -->
-<script src="https://www.paypal.com/sdk/js?client-id=VOTRE_CLIENT_ID_PAYPAL&currency=EUR"></script>
+<!-- PayPal : lien direct email -->
 
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -702,7 +701,32 @@
           <div class="recap-row"><span>Inscription ArtisanPro</span><span>Visibilité immédiate</span></div>
           <div class="recap-row"><span>Total à régler</span><span>15,00 €</span></div>
         </div>
-        <div class="paypal-wrapper" id="paypal-btn-container"></div>
+        <div id="paypal-btn-container">
+          <a id="paypalLienPaiement" href="#" target="_blank" rel="noopener"
+            onclick="document.getElementById('zoneConfirmation').style.display='block';this.style.opacity='0.6';"
+            style="display:flex;align-items:center;justify-content:center;gap:0.75rem;background:#FFC439;color:#003087;border-radius:10px;padding:1rem 1.5rem;font-family:'Inter',sans-serif;font-size:1rem;font-weight:800;text-decoration:none;transition:all 0.2s;width:100%;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#003087"><path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.59 3.025-2.566 6.082-8.558 6.082H9.824l-1.176 7.45h3.34l.738-4.676c.082-.518.526-.9 1.05-.9h.738c3.76 0 6.498-1.527 7.332-5.942.36-1.89.05-3.386-.624-4.727z"/></svg>
+            Payer 15 € avec PayPal
+          </a>
+
+          <!-- Zone confirmation — apparaît après clic sur le bouton PayPal -->
+          <div id="zoneConfirmation" style="display:none;margin-top:1rem;background:#F0FDF4;border:2px solid #BBF7D0;border-radius:10px;padding:1rem;">
+            <p style="font-size:0.8rem;font-weight:700;color:#15803D;margin-bottom:0.5rem;">✅ Paiement effectué ? Entrez votre numéro de transaction PayPal</p>
+            <p style="font-size:0.75rem;color:#555;margin-bottom:0.6rem;">Vous le trouvez dans votre email de confirmation PayPal ou dans Activité → détails du paiement.</p>
+            <input type="text" id="transactionId" placeholder="Ex : 3TU12345AB678901C"
+              style="width:100%;border:2px solid #BBF7D0;border-radius:8px;padding:0.6rem 0.8rem;font-family:'Inter',sans-serif;font-size:0.875rem;outline:none;margin-bottom:0.5rem;background:white;">
+            <span id="errTransaction" style="display:none;font-size:0.75rem;color:#DC2626;">Veuillez entrer votre numéro de transaction PayPal.</span>
+            <button onclick="confirmerPaiementManuel()"
+              style="width:100%;background:#15803D;color:white;border:none;border-radius:8px;padding:0.7rem;font-family:'Inter',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;margin-top:0.25rem;transition:background 0.2s;">
+              Activer mon profil →
+            </button>
+          </div>
+
+          <!-- Pas encore payé -->
+          <p style="font-size:0.72rem;color:var(--gray-mid);text-align:center;margin-top:0.6rem;">
+            🔒 Paiement sécurisé via PayPal · Aucun abonnement · Le profil s'active après vérification
+          </p>
+        </div>
         <p class="payment-note">🔒 Paiement sécurisé via PayPal · Aucun abonnement</p>
       </div>
 
@@ -732,7 +756,7 @@ const categories = [
 const emojis = {'Plombier':'🔧','Électricien':'⚡','Peintre':'🖌️','Maçon':'🧱','Menuisier':'🪚','Chauffagiste':'🔥','Couvreur':'🏠','Vitrier':'🪟','Charpentier':'🪵','Carreleur':'🏗️','Paysagiste':'🌿','Climaticien':'❄️','Serrurier':'🔒','Sanitaire':'🚿','Façadier':'🪣','Rénovation':'🔨','Autre':'🔨'};
 
 let artisansData = [];
-let paypalRendered = false;
+
 
 // =================== FIREBASE CHARGEMENT ===================
 async function chargerArtisansFirebase() {
@@ -870,22 +894,25 @@ function validerEtape1() {
   initPayPal();
 }
 
-// =================== PAYPAL ===================
+// =================== PAYPAL LIEN DIRECT ===================
 function initPayPal() {
-  if(paypalRendered) return;
-  paypalRendered = true;
-  paypal.Buttons({
-    style: { layout:'vertical', color:'gold', shape:'rect', label:'pay', height:48 },
-    createOrder: (data, actions) => actions.order.create({
-      purchase_units: [{ description: 'Inscription ArtisanPro', amount: { value: '15.00', currency_code: 'EUR' } }]
-    }),
-    onApprove: async (data, actions) => {
-      await actions.order.capture();
-      await enregistrerApresPaiement();
-      aller(3);
-    },
-    onError: (err) => { alert('Erreur PayPal. Veuillez réessayer.'); console.error(err); }
-  }).render('#paypal-btn-container');
+  document.getElementById('paypalLienPaiement').href = 'https://paypal.me/jercatbilman/15EUR';
+}
+
+function confirmerPaiementManuel() {
+  const txId = document.getElementById('transactionId').value.trim();
+  const errEl = document.getElementById('errTransaction');
+  // Validation : champ non vide + format PayPal (alphanum 17+ caractères)
+  if (!txId || txId.length < 10) {
+    errEl.style.display = 'block';
+    document.getElementById('transactionId').style.borderColor = '#DC2626';
+    return;
+  }
+  errEl.style.display = 'none';
+  // Stocker l'ID de transaction pour Firebase
+  window._transactionId = txId;
+  enregistrerApresPaiement();
+  aller(3);
 }
 
 // =================== ENREGISTREMENT FIREBASE APRÈS PAIEMENT ===================
@@ -903,7 +930,9 @@ async function enregistrerApresPaiement() {
     name: `${prenom} ${nom}`, prenom, nom, entreprise,
     metier, ville, tel, email, desc,
     emoji: emojis[metier] || '🔨',
-    note: 5.0, avis: 0, dispo: true
+    note: 5.0, avis: 0, dispo: true,
+    paypalTransactionId: window._transactionId || 'non renseigné',
+    paypalVerifié: false
   };
 
   const id = await sauvegarderArtisan(artisan);
@@ -916,6 +945,7 @@ async function enregistrerApresPaiement() {
     <p>👤 <strong>${prenom} ${nom}</strong> — ${entreprise}</p>
     <p>🔧 <strong>${metier}</strong> · ${ville}</p>
     <p>📞 ${tel}</p>
+    <p>🧾 Transaction PayPal : <strong>${window._transactionId || '—'}</strong></p>
     <p>✅ Profil en ligne · <strong>15 € réglés</strong>${id ? ' · <span class="firebase-tag">🔥 Firebase</span>' : ''}</p>`;
   document.getElementById('success_email').textContent = email;
 }
