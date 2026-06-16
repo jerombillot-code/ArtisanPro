@@ -246,8 +246,10 @@
   window._orderBy = orderBy;
   window._serverTimestamp = serverTimestamp;
 
-  // Charger les artisans au démarrage
-  window.addEventListener('load', () => chargerArtisansFirebase());
+  // Firebase prêt → déclencher le chargement
+  // On utilise un event custom pour éviter le problème de timing avec type="module"
+  window._firebaseReady = true;
+  document.dispatchEvent(new Event('firebaseReady'));
 </script>
 <!-- PayPal : lien direct email -->
 
@@ -978,7 +980,12 @@ async function enregistrerApresPaiement() {
   document.getElementById('success_email').textContent = email;
 }
 
-renderCats();
+// Démarrage : attendre que Firebase soit prêt avant de charger les artisans
+if (window._firebaseReady) {
+  chargerArtisansFirebase();
+} else {
+  document.addEventListener('firebaseReady', () => chargerArtisansFirebase());
+}
 </script>
 </body>
 </html>
