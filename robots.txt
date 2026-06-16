@@ -1,0 +1,11 @@
+# ArtisanPro — robots.txt
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /admin
+
+# Sitemap
+Sitemap: https://artisanpro.fr/sitemap.xml
+
+# Crawl-delay (optionnel, bonne pratique)
+Crawl-delay: 1
