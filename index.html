@@ -820,10 +820,15 @@ function renderCats() {
 // =================== RECHERCHE ===================
 function setQuick(m) { document.getElementById('inputMetier').value = m; lancerRecherche(); }
 
-function lancerRecherche() {
+async function lancerRecherche() {
   const metier = document.getElementById('inputMetier').value.trim();
   const ville = document.getElementById('inputVille').value.trim();
   if (!metier && !ville) return;
+
+  // Si Firebase pas encore chargé → attendre
+  if (artisansData.length === 0 && window._firebaseReady) {
+    await chargerArtisansFirebase();
+  }
 
   // Uniquement les profils actifs et non expirés
   const now = new Date();
@@ -834,10 +839,11 @@ function lancerRecherche() {
   });
 
   const filtered = actifs.filter(a => {
-    const m = metier.toLowerCase();
-    const v = ville.toLowerCase();
-    const matchM = !m || (a.metier||'').toLowerCase().includes(m) || (a.name||'').toLowerCase().includes(m) || (a.desc||'').toLowerCase().includes(m) || (a.entreprise||'').toLowerCase().includes(m);
-    const matchV = !v || (a.ville||'').toLowerCase().includes(v);
+    const m = metier.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const v = ville.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const norm = s => (s||'').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const matchM = !m || norm(a.metier).includes(m) || norm(a.name).includes(m) || norm(a.desc).includes(m) || norm(a.entreprise).includes(m);
+    const matchV = !v || norm(a.ville).includes(v);
     return matchM && matchV;
   });
 
