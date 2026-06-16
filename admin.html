@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ArtisanPro — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ======================================================
+  // 🔧 MÊME CONFIG QUE index.html
+  // ======================================================
+  const firebaseConfig = {
+    apiKey: "VOTRE_API_KEY",
+    authDomain: "VOTRE_PROJECT.firebaseapp.com",
+    projectId: "VOTRE_PROJECT_ID",
+    storageBucket: "VOTRE_PROJECT.appspot.com",
+    messagingSenderId: "VOTRE_SENDER_ID",
+    appId: "VOTRE_APP_ID"
+  };
+  // ======================================================
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  window._db = db;
+  window._col = collection;
+  window._getDocs = getDocs;
+  window._query = query;
+  window._orderBy = orderBy;
+  window._doc = doc;
+  window._updateDoc = updateDoc;
+  window._deleteDoc = deleteDoc;
+
+  window.addEventListener('load', charger);
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --navy:#1E3A5F; --brick:#E85D26; --brick-dark:#C44D1A; --cream:#F7F4EF; --gray:#E8E4DE; --gray-mid:#9B9790; --text:#1A1A1A; --white:#fff; --green:#15803D; --green-bg:#ECFDF3; --red:#DC2626; --red-bg:#FEF2F2; }
+  body { font-family:'Inter',sans-serif; background:var(--cream); color:var(--text); min-height:100vh; }
+
+  /* HEADER */
+  .admin-header { background:var(--navy); padding:0 2rem; height:60px; display:flex; align-items:center; justify-content:space-between; }
+  .admin-logo { font-family:'Playfair Display',serif; color:var(--white); font-size:1.3rem; }
+  .admin-logo span { color:var(--brick); }
+  .admin-badge { background:var(--brick); color:var(--white); font-size:0.7rem; font-weight:700; padding:0.2rem 0.6rem; border-radius:20px; }
+  .back-link { color:rgba(255,255,255,0.6); text-decoration:none; font-size:0.85rem; }
+  .back-link:hover { color:var(--white); }
+
+  /* LOGIN */
+  .login-screen { max-width:380px; margin:5rem auto; background:var(--white); border-radius:16px; padding:2.5rem; box-shadow:0 12px 40px rgba(0,0,0,0.1); text-align:center; }
+  .login-screen h2 { font-family:'Playfair Display',serif; color:var(--navy); font-size:1.5rem; margin-bottom:0.5rem; }
+  .login-screen p { color:var(--gray-mid); font-size:0.875rem; margin-bottom:1.5rem; }
+  .login-input { width:100%; border:2px solid var(--gray); border-radius:8px; padding:0.75rem 1rem; font-family:'Inter',sans-serif; font-size:0.95rem; outline:none; margin-bottom:1rem; transition:border-color 0.2s; }
+  .login-input:focus { border-color:var(--brick); }
+  .login-btn { width:100%; background:var(--brick); color:var(--white); border:none; border-radius:8px; padding:0.8rem; font-family:'Inter',sans-serif; font-size:0.95rem; font-weight:600; cursor:pointer; }
+  .login-btn:hover { background:var(--brick-dark); }
+  .login-error { color:var(--red); font-size:0.8rem; margin-top:0.5rem; display:none; }
+
+  /* DASHBOARD */
+  .dashboard { display:none; max-width:1100px; margin:0 auto; padding:2rem; }
+  .dash-stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:1rem; margin-bottom:2rem; }
+  .dash-card { background:var(--white); border:1.5px solid var(--gray); border-radius:12px; padding:1.25rem 1.5rem; }
+  .dash-card-num { font-family:'Playfair Display',serif; font-size:2rem; font-weight:900; color:var(--brick); }
+  .dash-card-label { font-size:0.8rem; color:var(--gray-mid); margin-top:0.2rem; text-transform:uppercase; letter-spacing:0.5px; }
+
+  /* TABLE */
+  .table-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem; }
+  .table-title { font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--navy); }
+  .table-search { border:1.5px solid var(--gray); border-radius:8px; padding:0.5rem 0.9rem; font-family:'Inter',sans-serif; font-size:0.875rem; outline:none; background:var(--white); min-width:220px; }
+  .table-search:focus { border-color:var(--brick); }
+  .export-btn { background:var(--navy); color:var(--white); border:none; border-radius:8px; padding:0.5rem 1rem; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; cursor:pointer; }
+  .export-btn:hover { background:#162d4a; }
+
+  .table-wrap { background:var(--white); border-radius:14px; border:1.5px solid var(--gray); overflow:hidden; overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; min-width:700px; }
+  thead { background:var(--navy); }
+  thead th { color:rgba(255,255,255,0.85); font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; padding:0.9rem 1rem; text-align:left; }
+  tbody tr { border-bottom:1px solid var(--gray); transition:background 0.15s; }
+  tbody tr:last-child { border-bottom:none; }
+  tbody tr:hover { background:#FFF8F5; }
+  tbody td { padding:0.85rem 1rem; font-size:0.875rem; color:var(--text); vertical-align:middle; }
+  .td-name { font-weight:600; color:var(--navy); }
+  .td-metier { color:var(--brick); font-weight:600; font-size:0.8rem; }
+  .td-date { color:var(--gray-mid); font-size:0.8rem; }
+  .badge-actif { background:var(--green-bg); color:var(--green); font-size:0.7rem; font-weight:700; padding:0.2rem 0.6rem; border-radius:20px; }
+  .badge-inactif { background:var(--red-bg); color:var(--red); font-size:0.7rem; font-weight:700; padding:0.2rem 0.6rem; border-radius:20px; }
+  .action-btn { border:none; border-radius:6px; padding:0.3rem 0.7rem; font-family:'Inter',sans-serif; font-size:0.75rem; font-weight:600; cursor:pointer; margin-right:0.3rem; }
+  .btn-toggle { background:#EFF6FF; color:#1D4ED8; }
+  .btn-toggle:hover { background:#DBEAFE; }
+  .btn-delete { background:var(--red-bg); color:var(--red); }
+  .btn-delete:hover { background:#FEE2E2; }
+
+  .loading { text-align:center; padding:3rem; color:var(--gray-mid); }
+  .spinner { width:32px; height:32px; border:3px solid var(--gray); border-top-color:var(--brick); border-radius:50%; animation:spin 0.7s linear infinite; margin:0 auto 1rem; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .empty { text-align:center; padding:3rem; color:var(--gray-mid); }
+
+  @media(max-width:600px) { .dashboard { padding:1rem; } }
+</style>
+</head>
+<body>
+
+<div class="admin-header">
+  <div style="display:flex;align-items:center;gap:0.75rem">
+    <div class="admin-logo">Artisan<span>Pro</span></div>
+    <span class="admin-badge">ADMIN</span>
+  </div>
+  <a href="index.html" class="back-link">← Retour au site</a>
+</div>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <h2>Accès Admin</h2>
+  <p>Entrez le mot de passe pour accéder au tableau de bord</p>
+  <input type="password" class="login-input" id="adminPwd" placeholder="Mot de passe" onkeydown="if(event.key==='Enter')login()">
+  <button class="login-btn" onclick="login()">Se connecter</button>
+  <p class="login-error" id="loginError">Mot de passe incorrect</p>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+  <div class="dash-stats">
+    <div class="dash-card"><div class="dash-card-num" id="statTotal">—</div><div class="dash-card-label">Artisans inscrits</div></div>
+    <div class="dash-card"><div class="dash-card-num" id="statActifs">—</div><div class="dash-card-label">Profils actifs</div></div>
+    <div class="dash-card"><div class="dash-card-num" id="statRevenu">—</div><div class="dash-card-label">Revenus PayPal (€)</div></div>
+    <div class="dash-card"><div class="dash-card-num" id="statMois">—</div><div class="dash-card-label">Inscrits ce mois</div></div>
+  </div>
+
+  <div class="table-header">
+    <h2 class="table-title">Liste des artisans</h2>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+      <input type="text" class="table-search" id="tableSearch" placeholder="Rechercher…" oninput="filtrerTable()">
+      <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="loading" id="loadingIndicator">
+      <div class="spinner"></div>
+      Chargement depuis Firebase…
+    </div>
+    <table id="adminTable" style="display:none">
+      <thead>
+        <tr>
+          <th>Artisan</th>
+          <th>Métier</th>
+          <th>Ville</th>
+          <th>Contact</th>
+          <th>Statut</th>
+          <th>Inscription</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="adminTbody"></tbody>
+    </table>
+    <div class="empty" id="emptyMsg" style="display:none">Aucun artisan inscrit pour l'instant.</div>
+  </div>
+</div>
+
+<script>
+// ======================================================
+// 🔧 MOT DE PASSE ADMIN — change-le !
+const ADMIN_PASSWORD = 'artisanpro2026';
+// ======================================================
+
+let artisans = [];
+let filtres = [];
+
+function login() {
+  const pwd = document.getElementById('adminPwd').value;
+  if(pwd === ADMIN_PASSWORD) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    charger();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+
+async function charger() {
+  try {
+    const db = window._db;
+    const q = window._query(window._col(db, 'artisans'), window._orderBy('createdAt', 'desc'));
+    const snap = await window._getDocs(q);
+    artisans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    afficherStats();
+    filtres = [...artisans];
+    renderTable(filtres);
+    document.getElementById('loadingIndicator').style.display = 'none';
+    document.getElementById('adminTable').style.display = artisans.length ? 'table' : 'none';
+    document.getElementById('emptyMsg').style.display = artisans.length ? 'none' : 'block';
+  } catch(e) {
+    document.getElementById('loadingIndicator').innerHTML = '<p style="color:#DC2626">⚠️ Firebase non configuré. Remplacez la config Firebase.</p>';
+    console.error(e);
+  }
+}
+
+function afficherStats() {
+  const actifs = artisans.filter(a => a.actif !== false).length;
+  const now = new Date();
+  const moisActuel = artisans.filter(a => {
+    if(!a.createdAt?.toDate) return false;
+    const d = a.createdAt.toDate();
+    return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+  }).length;
+  document.getElementById('statTotal').textContent = artisans.length;
+  document.getElementById('statActifs').textContent = actifs;
+  document.getElementById('statRevenu').textContent = (artisans.length * 15).toLocaleString('fr-FR') + ' €';
+  document.getElementById('statMois').textContent = moisActuel;
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('adminTbody');
+  if(!data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--gray-mid)">Aucun résultat</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(a => {
+    const dateStr = a.createdAt?.toDate ? a.createdAt.toDate().toLocaleDateString('fr-FR') : '—';
+    const actif = a.actif !== false;
+    return `<tr>
+      <td><div class="td-name">${a.emoji||'🔨'} ${a.name}</div><div style="font-size:0.75rem;color:var(--gray-mid)">${a.entreprise||''}</div></td>
+      <td><span class="td-metier">${a.metier}</span></td>
+      <td>${a.ville}</td>
+      <td><div style="font-size:0.8rem">${a.tel||'—'}</div><div style="font-size:0.75rem;color:var(--gray-mid)">${a.email||''}</div></td>
+      <td><span class="${actif?'badge-actif':'badge-inactif'}">${actif?'Actif':'Inactif'}</span></td>
+      <td class="td-date">${dateStr}</td>
+      <td>
+        <button class="action-btn btn-toggle" onclick="toggleActif('${a.id}',${actif})">${actif?'Désactiver':'Activer'}</button>
+        <button class="action-btn btn-delete" onclick="supprimerArtisan('${a.id}')">Supprimer</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filtrerTable() {
+  const q = document.getElementById('tableSearch').value.toLowerCase();
+  filtres = artisans.filter(a =>
+    (a.name||'').toLowerCase().includes(q) ||
+    (a.metier||'').toLowerCase().includes(q) ||
+    (a.ville||'').toLowerCase().includes(q) ||
+    (a.email||'').toLowerCase().includes(q) ||
+    (a.entreprise||'').toLowerCase().includes(q)
+  );
+  renderTable(filtres);
+}
+
+async function toggleActif(id, actuel) {
+  try {
+    await window._updateDoc(window._doc(window._db, 'artisans', id), { actif: !actuel });
+    const a = artisans.find(x => x.id===id);
+    if(a) a.actif = !actuel;
+    afficherStats();
+    filtrerTable();
+  } catch(e) { alert('Erreur Firebase'); }
+}
+
+async function supprimerArtisan(id) {
+  if(!confirm('Supprimer définitivement ce profil ?')) return;
+  try {
+    await window._deleteDoc(window._doc(window._db, 'artisans', id));
+    artisans = artisans.filter(a => a.id !== id);
+    afficherStats();
+    filtrerTable();
+  } catch(e) { alert('Erreur Firebase'); }
+}
+
+function exportCSV() {
+  const rows = [['Nom','Entreprise','Métier','Ville','Téléphone','Email','Statut','Date inscription']];
+  artisans.forEach(a => {
+    const date = a.createdAt?.toDate ? a.createdAt.toDate().toLocaleDateString('fr-FR') : '';
+    rows.push([a.name, a.entreprise||'', a.metier, a.ville, a.tel||'', a.email||'', a.actif!==false?'Actif':'Inactif', date]);
+  });
+  const csv = rows.map(r => r.map(v => `"${(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='artisanpro_artisans.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
