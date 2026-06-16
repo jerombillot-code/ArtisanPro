@@ -760,12 +760,16 @@ let artisansData = [];
 
 // =================== FIREBASE CHARGEMENT ===================
 async function chargerArtisansFirebase() {
+  // Indicateur de chargement dans le bouton search
+  const btn = document.querySelector('.search-btn');
+  if (btn) { btn.textContent = '⏳ Chargement…'; btn.disabled = true; }
   try {
     const db = window._db;
     const q = window._query(window._collection(db, 'artisans'), window._orderBy('createdAt', 'desc'));
     const snap = await window._getDocs(q);
+    // Charger tous les artisans (le filtre actif/expiration est dans lancerRecherche)
     artisansData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    document.getElementById('statCount').textContent = artisansData.length + '+';
+    document.getElementById('statCount').textContent = artisansData.filter(a => a.actif !== false).length + '+';
     renderCats();
   } catch(e) {
     console.warn('Firebase non configuré, mode démo actif', e);
@@ -776,6 +780,8 @@ async function chargerArtisansFirebase() {
     ];
     document.getElementById('statCount').textContent = '12 400+';
     renderCats();
+  } finally {
+    if (btn) { btn.textContent = 'Rechercher'; btn.disabled = false; }
   }
 }
 
@@ -816,13 +822,23 @@ function lancerRecherche() {
   const metier = document.getElementById('inputMetier').value.trim();
   const ville = document.getElementById('inputVille').value.trim();
   if (!metier && !ville) return;
-  const filtered = artisansData.filter(a => {
+
+  // Uniquement les profils actifs et non expirés
+  const now = new Date();
+  const actifs = artisansData.filter(a => {
+    if (a.actif === false) return false;
+    if (a.dateExpiration && new Date(a.dateExpiration) < now) return false;
+    return true;
+  });
+
+  const filtered = actifs.filter(a => {
     const m = metier.toLowerCase();
     const v = ville.toLowerCase();
-    const matchM = !m || (a.metier||'').toLowerCase().includes(m) || (a.name||'').toLowerCase().includes(m) || (a.desc||'').toLowerCase().includes(m);
+    const matchM = !m || (a.metier||'').toLowerCase().includes(m) || (a.name||'').toLowerCase().includes(m) || (a.desc||'').toLowerCase().includes(m) || (a.entreprise||'').toLowerCase().includes(m);
     const matchV = !v || (a.ville||'').toLowerCase().includes(v);
     return matchM && matchV;
   });
+
   document.getElementById('resultsCount').innerHTML = `<span>${filtered.length}</span> artisan${filtered.length>1?'s':''} trouvé${filtered.length>1?'s':''}${metier?' pour « '+metier+' »':''}${ville?' à '+ville:''}`;
   document.getElementById('artisansGrid').innerHTML = filtered.length
     ? filtered.map(a => `
@@ -830,7 +846,7 @@ function lancerRecherche() {
         <div class="artisan-top">
           <div class="artisan-avatar">${a.emoji||'🔨'}</div>
           <div class="artisan-info"><div class="artisan-name">${a.name}</div><div class="artisan-metier">${a.metier}</div></div>
-          ${a.dispo ? '<span class="artisan-badge">✓ Disponible</span>' : ''}
+          ${a.dispo !== false ? '<span class="artisan-badge">✓ Disponible</span>' : ''}
         </div>
         <div class="artisan-stars"><span class="stars">${'★'.repeat(Math.floor(a.note||5))}</span><strong>${(a.note||5).toFixed(1)}</strong><span style="color:var(--gray-mid)">(${a.avis||0} avis)</span></div>
         <p class="artisan-desc">${a.desc||'Artisan professionnel. Contactez-moi pour un devis.'}</p>
@@ -839,7 +855,12 @@ function lancerRecherche() {
           <button class="artisan-contact" onclick="window.location.href='tel:${a.tel||''}'">Contacter</button>
         </div>
       </div>`).join('')
-    : `<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--gray-mid)"><div style="font-size:2.5rem;margin-bottom:1rem">🔍</div><p style="font-weight:600;color:var(--navy)">Aucun résultat</p><p style="margin-top:0.5rem">Essayez un autre métier ou ville.</p></div>`;
+    : `<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--gray-mid)">
+        <div style="font-size:2.5rem;margin-bottom:1rem">🔍</div>
+        <p style="font-weight:600;color:var(--navy)">Aucun résultat</p>
+        <p style="margin-top:0.5rem">Essayez un autre métier ou ville.</p>
+        ${artisansData.length === 0 ? '<p style="margin-top:0.5rem;font-size:0.8rem;color:var(--brick)">⏳ Les données sont encore en cours de chargement, réessayez dans quelques secondes.</p>' : ''}
+      </div>`;
   document.getElementById('resultsSection').style.display = 'block';
   document.getElementById('resultsSection').scrollIntoView({ behavior:'smooth', block:'start' });
 }
