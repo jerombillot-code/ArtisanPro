@@ -926,13 +926,19 @@ async function enregistrerApresPaiement() {
   const entreprise = document.getElementById('f_entreprise').value.trim();
   const desc = document.getElementById('f_desc').value.trim() || 'Artisan professionnel. Contactez-moi pour un devis gratuit.';
 
+  // Date d'expiration = aujourd'hui + 30 jours
+  const dateExpiration = new Date();
+  dateExpiration.setDate(dateExpiration.getDate() + 30);
+
   const artisan = {
     name: `${prenom} ${nom}`, prenom, nom, entreprise,
     metier, ville, tel, email, desc,
     emoji: emojis[metier] || '🔨',
     note: 5.0, avis: 0, dispo: true,
     paypalTransactionId: window._transactionId || 'non renseigné',
-    paypalVerifié: false
+    paypalVerifié: false,
+    dateExpiration: dateExpiration.toISOString(),
+    rappelEnvoye: false
   };
 
   const id = await sauvegarderArtisan(artisan);
@@ -946,6 +952,7 @@ async function enregistrerApresPaiement() {
     <p>🔧 <strong>${metier}</strong> · ${ville}</p>
     <p>📞 ${tel}</p>
     <p>🧾 Transaction PayPal : <strong>${window._transactionId || '—'}</strong></p>
+    <p>📅 Abonnement valide jusqu'au : <strong>${dateExpiration.toLocaleDateString('fr-FR')}</strong></p>
     <p>✅ Profil en ligne · <strong>15 € réglés</strong>${id ? ' · <span class="firebase-tag">🔥 Firebase</span>' : ''}</p>`;
   document.getElementById('success_email').textContent = email;
 }
