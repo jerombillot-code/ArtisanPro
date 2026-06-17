@@ -6,6 +6,3 @@ Disallow: /admin
 
 # Sitemap
 Sitemap: https://artisan-pro-nine.vercel.app/sitemap.xml
-
-# Crawl-delay (optionnel, bonne pratique)
-Crawl-delay: 1
