@@ -534,7 +534,7 @@ function renderTable(data) {
         <div style="font-size:0.72rem;color:var(--gray-mid)">${a.entreprise||''}</div>
       </td>
       <td>
-        <span class="td-metier">${a.metier}</span>
+        <span class="td-metier">${(a.metiers && a.metiers.length) ? a.metiers.join(', ') : (a.metier||'')}</span>
         <div style="font-size:0.75rem;color:var(--gray-mid)">${a.ville}</div>
       </td>
       <td>
@@ -571,6 +571,7 @@ function filtrerTable() {
   filtres = artisans.filter(a =>
     (a.name||'').toLowerCase().includes(q) ||
     (a.metier||'').toLowerCase().includes(q) ||
+    (a.metiers && a.metiers.some(m => m.toLowerCase().includes(q))) ||
     (a.ville||'').toLowerCase().includes(q) ||
     (a.email||'').toLowerCase().includes(q) ||
     (a.entreprise||'').toLowerCase().includes(q)
@@ -630,11 +631,12 @@ async function supprimerArtisan(id) {
 }
 
 function exportCSV() {
-  const rows = [['Nom','Entreprise','Métier','Ville','Téléphone','Email','Statut','Transaction','Expiration','Rappel envoyé']];
+  const rows = [['Nom','Entreprise','Métiers','Ville','Téléphone','Email','Statut','Transaction','Expiration','Rappel envoyé']];
   artisans.forEach(a => {
     const exp = a.dateExpiration ? new Date(a.dateExpiration).toLocaleDateString('fr-FR') : '';
+    const metiersStr = (a.metiers && a.metiers.length) ? a.metiers.join(' / ') : (a.metier||'');
     rows.push([
-      a.name, a.entreprise||'', a.metier, a.ville, a.tel||'', a.email||'',
+      a.name, a.entreprise||'', metiersStr, a.ville, a.tel||'', a.email||'',
       a.actif!==false?'Actif':'Inactif',
       a.paypalTransactionId||'',
       exp,
