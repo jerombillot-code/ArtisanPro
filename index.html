@@ -679,15 +679,26 @@
           <div class="form-group"><label>Prénom *</label><input type="text" id="f_prenom" placeholder="Jean"><span class="form-error" id="err_prenom">Champ requis</span></div>
           <div class="form-group"><label>Nom *</label><input type="text" id="f_nom" placeholder="Dupont"><span class="form-error" id="err_nom">Champ requis</span></div>
           <div class="form-group full"><label>Nom de l'entreprise *</label><input type="text" id="f_entreprise" placeholder="Plomberie Dupont"><span class="form-error" id="err_entreprise">Champ requis</span></div>
-          <div class="form-group"><label>Métier *</label>
-            <select id="f_metier">
-              <option value="">— Choisir —</option>
-              <option>Plombier</option><option>Électricien</option><option>Peintre</option><option>Maçon</option>
-              <option>Menuisier</option><option>Chauffagiste</option><option>Couvreur</option><option>Vitrier</option>
-              <option>Charpentier</option><option>Carreleur</option><option>Paysagiste</option><option>Climaticien</option>
-              <option>Serrurier</option><option>Sanitaire</option><option>Façadier</option><option>Rénovation</option><option>Autre</option>
-            </select>
-            <span class="form-error" id="err_metier">Champ requis</span>
+          <div class="form-group full"><label>Métiers * <span style="font-weight:400;color:var(--gray-mid);font-size:0.75rem">(sélectionnez tous ceux que vous exercez)</span></label>
+            <div id="f_metiers_checkboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.5rem;background:var(--cream);border:2px solid var(--gray);border-radius:8px;padding:0.75rem;">
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Plombier" class="metier-checkbox"> 🔧 Plombier</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Électricien" class="metier-checkbox"> ⚡ Électricien</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Peintre" class="metier-checkbox"> 🖌️ Peintre</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Maçon" class="metier-checkbox"> 🧱 Maçon</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Menuisier" class="metier-checkbox"> 🪚 Menuisier</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Chauffagiste" class="metier-checkbox"> 🔥 Chauffagiste</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Couvreur" class="metier-checkbox"> 🏠 Couvreur</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Vitrier" class="metier-checkbox"> 🪟 Vitrier</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Charpentier" class="metier-checkbox"> 🪵 Charpentier</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Carreleur" class="metier-checkbox"> 🏗️ Carreleur</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Paysagiste" class="metier-checkbox"> 🌿 Paysagiste</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Climaticien" class="metier-checkbox"> ❄️ Climaticien</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Serrurier" class="metier-checkbox"> 🔒 Serrurier</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Sanitaire" class="metier-checkbox"> 🚿 Sanitaire</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Façadier" class="metier-checkbox"> 🪣 Façadier</label>
+              <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="checkbox" value="Rénovation" class="metier-checkbox"> 🔨 Rénovation</label>
+            </div>
+            <span class="form-error" id="err_metier">Sélectionnez au moins un métier</span>
           </div>
           <div class="form-group"><label>Ville *</label><input type="text" id="f_ville" placeholder="Paris"><span class="form-error" id="err_ville">Champ requis</span></div>
           <div class="form-group full"><label>Téléphone *</label><input type="tel" id="f_tel" placeholder="06 00 00 00 00"><span class="form-error" id="err_tel">Champ requis</span></div>
@@ -811,7 +822,10 @@ async function sauvegarderArtisan(data) {
 // =================== CATÉGORIES ===================
 function renderCats() {
   const counts = {};
-  artisansData.forEach(a => { counts[a.metier] = (counts[a.metier] || 0) + 1; });
+  artisansData.forEach(a => {
+    const list = (a.metiers && a.metiers.length) ? a.metiers : [a.metier];
+    list.forEach(m => { if (m) counts[m] = (counts[m] || 0) + 1; });
+  });
   document.getElementById('catsGrid').innerHTML = categories.map(c => `
     <div class="cat-card" onclick="setQuick('${c.name}')">
       <span class="cat-icon">${c.icon}</span>
@@ -845,7 +859,8 @@ async function lancerRecherche() {
     const m = metier.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const v = ville.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const norm = s => (s||'').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const matchM = !m || norm(a.metier).includes(m) || norm(a.name).includes(m) || norm(a.desc).includes(m) || norm(a.entreprise).includes(m);
+    const metiersList = (a.metiers && a.metiers.length) ? a.metiers : [a.metier];
+    const matchM = !m || metiersList.some(mt => norm(mt).includes(m)) || norm(a.name).includes(m) || norm(a.desc).includes(m) || norm(a.entreprise).includes(m);
     const matchV = !v || norm(a.ville).includes(v);
     return matchM && matchV;
   });
@@ -856,7 +871,7 @@ async function lancerRecherche() {
       <div class="artisan-card">
         <div class="artisan-top">
           <div class="artisan-avatar">${a.emoji||'🔨'}</div>
-          <div class="artisan-info"><div class="artisan-name">${a.name}</div><div class="artisan-metier">${a.metier}</div></div>
+          <div class="artisan-info"><div class="artisan-name">${a.name}</div><div class="artisan-metier">${(a.metiers && a.metiers.length) ? a.metiers.join(' · ') : a.metier}</div></div>
           ${a.dispo !== false ? '<span class="artisan-badge">✓ Disponible</span>' : ''}
         </div>
         <div class="artisan-stars"><span class="stars">${'★'.repeat(Math.floor(a.note||5))}</span><strong>${(a.note||5).toFixed(1)}</strong><span style="color:var(--gray-mid)">(${a.avis||0} avis)</span></div>
@@ -908,7 +923,7 @@ function aller(n) {
 
 // =================== VALIDATION ÉTAPE 1 ===================
 function validerEtape1() {
-  const champs = ['prenom','nom','entreprise','metier','ville','tel','email'];
+  const champs = ['prenom','nom','entreprise','ville','tel','email'];
   let ok = true;
   champs.forEach(c => {
     const val = document.getElementById('f_'+c).value.trim();
@@ -917,10 +932,21 @@ function validerEtape1() {
     document.getElementById('err_'+c).classList.toggle('show', afficher);
     if(afficher) ok = false;
   });
+
+  // Validation métiers (au moins 1 case cochée)
+  const metiersSelectionnes = Array.from(document.querySelectorAll('.metier-checkbox:checked')).map(cb => cb.value);
+  const errMetier = document.getElementById('err_metier');
+  if (metiersSelectionnes.length === 0) {
+    errMetier.classList.add('show');
+    ok = false;
+  } else {
+    errMetier.classList.remove('show');
+  }
+
   if(!ok) return;
   const prenom = document.getElementById('f_prenom').value.trim();
   const nom = document.getElementById('f_nom').value.trim();
-  document.getElementById('recap_nom_metier').textContent = `${prenom} ${nom} — ${document.getElementById('f_metier').value}`;
+  document.getElementById('recap_nom_metier').textContent = `${prenom} ${nom} — ${metiersSelectionnes.join(', ')}`;
   document.getElementById('recap_ville').textContent = document.getElementById('f_ville').value.trim();
   aller(2);
   initPayPal();
@@ -951,7 +977,8 @@ function confirmerPaiementManuel() {
 async function enregistrerApresPaiement() {
   const prenom = document.getElementById('f_prenom').value.trim();
   const nom = document.getElementById('f_nom').value.trim();
-  const metier = document.getElementById('f_metier').value;
+  const metiers = Array.from(document.querySelectorAll('.metier-checkbox:checked')).map(cb => cb.value);
+  const metierPrincipal = metiers[0] || 'Autre';
   const ville = document.getElementById('f_ville').value.trim();
   const tel = document.getElementById('f_tel').value.trim();
   const email = document.getElementById('f_email').value.trim();
@@ -964,8 +991,8 @@ async function enregistrerApresPaiement() {
 
   const artisan = {
     name: `${prenom} ${nom}`, prenom, nom, entreprise,
-    metier, ville, tel, email, desc,
-    emoji: emojis[metier] || '🔨',
+    metiers, metier: metierPrincipal, ville, tel, email, desc,
+    emoji: emojis[metierPrincipal] || '🔨',
     note: 5.0, avis: 0, dispo: true,
     paypalTransactionId: window._transactionId || 'non renseigné',
     paypalVerifié: false,
@@ -981,7 +1008,7 @@ async function enregistrerApresPaiement() {
   // Écran succès
   document.getElementById('success_recap').innerHTML = `
     <p>👤 <strong>${prenom} ${nom}</strong> — ${entreprise}</p>
-    <p>🔧 <strong>${metier}</strong> · ${ville}</p>
+    <p>🔧 <strong>${metiers.join(', ')}</strong> · ${ville}</p>
     <p>📞 ${tel}</p>
     <p>🧾 Transaction PayPal : <strong>${window._transactionId || '—'}</strong></p>
     <p>📅 Abonnement valide jusqu'au : <strong>${dateExpiration.toLocaleDateString('fr-FR')}</strong></p>
